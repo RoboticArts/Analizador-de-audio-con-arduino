@@ -1,12 +1,10 @@
-/*
- * Ejemplo en el que se muestra un espectro de frecuencias a traves de la pantalla
- * TFT, los valores se obtienen desde un random()
- */
 
 #include <Adafruit_GFX.h>    // Libreria de graficos
 #include <Adafruit_TFTLCD.h> // Libreria de LCD 
 #include <TouchScreen.h>     // Libreria del panel tactil
 
+
+/************************** CONFIGURACÓN DE LA PANTALLA TFT *****************/
 #define YP A1  // Pin analogico A1 para ADC
 #define XM A2  // Pin analogico A2 para ADC
 #define YM 7 
@@ -23,7 +21,7 @@ short TS_MAXY = 891;
 #define MAXPRESSURE 1000
 
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 364); 
-
+//Es RGB 565: http://www.barth-dev.de/online/rgb565-color-picker/
 #define BLACK   ~0x0000 //Define colors
 #define WHITE   ~0xFFFF
 #define RED     ~0xF800
@@ -42,22 +40,12 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 364);
 
 Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET); // Instancia LCD 
 
-#define BOXSIZE 40 // Tamaño de los cajetines de colores
-#define BOXSIZEY 30 // Tamaño de los cajetines de colores
-#define PENRADIUS 2 // Tamaño del cursor a la hora de pintar 
-
-int oldcolor, currentcolor; // Colores del cursor
-
-/////////////////////////////////////////////////
+/******************* CONFIGURACIÓN DEL ADC POR REGISTROS *******************/
 
 // FHT, http://wiki.openmusiclabs.com/wiki/ArduinoFHT
 #define LOG_OUT 1 // use the log output function
-#define LIN_OUT8 1 // use the linear byte output function
 #define FHT_N 256 // set to 256 point fht
 #include <FHT.h> // include the library
-
-// pins
-//#define MicPin A0 // used with analogRead mode only
 
 // consts
 #define AmpMax (1024 / 2)
@@ -87,24 +75,21 @@ int oldcolor, currentcolor; // Colores del cursor
 
 
 
- 
-/////////////////////////////////////////////
+/********************** VARIABLES DEL CÓDIGO ******************/
 
-// Meter colour schemes
-#define RED2RED 0
-#define GREEN2GREEN 1
-#define BLUE2BLUE 2
-#define BLUE2RED 3
-#define GREEN2RED 4
-#define RED2GREEN 5
-
-///////////////////////7
     int randomNumber25  = 0;
     int randomNumber = 0;
+    int last_randomNumber = 0;
     int offsetX = 50;
     int offsetY = 10;
 
     int decibelios = 0;
+    double medida = 0;
+    
+    //Para la aguja del tacómetro
+    double circleX = 160;
+    double circleY = 100;
+    double radio = 120;
 
 void setup() {
   
@@ -112,59 +97,195 @@ void setup() {
   tft.fillScreen(BLACK); // Pintamos el fondo de negro
    
   Serial.begin(9600);
+
+  init_fast_ADC();
+   
+  //init_tachometer(160,100,120); // Posicion X, Posicion Y, Radio /// Probado con R:100  X: 160 Y: 120
+  init_spectrum();
+
+
+}
+
+void loop() {
+
+  /*
+    tft.setRotation(0);
+
+    //25Hz
+    randomNumber = map( fht_log_out [0], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX, 10 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 10 + offsetY, randomNumber , 10, WHITE); // Dibujamos un cuadrado/rectangulo relleno de color 
+                                       //(Punto inicial X, Punto inicial Y, Longitud X,Longitud Y, Color)
+    //50Hz
+    randomNumber = map( fht_log_out [1], 0 , 256, 0 ,100); 
+    tft.fillRect(0  + offsetX, 30 + offsetY , 200, 10, BLACK);
+    tft.fillRect(0  + offsetX, 30 + offsetY , randomNumber, 10, WHITE ); 
+    
+    //100Hz
+    randomNumber = map( fht_log_out [2], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX, 50 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 50 + offsetY, randomNumber, 10, WHITE ); 
+    
+    
+    //200HZ
+    randomNumber = map( fht_log_out [3], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX,70 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 70 + offsetY, randomNumber, 10, WHITE ); 
+    
+    //500hz
+    randomNumber = map( fht_log_out [4], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX,90 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 90 + offsetY, randomNumber, 10, WHITE );   
+    
+    //800Hz
+    randomNumber = map( fht_log_out [5], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX,110 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 110 + offsetY, randomNumber, 10, WHITE ); 
+   
+    //1KHz
+    randomNumber = map( fht_log_out [6], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX,130 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 130 + offsetY, randomNumber, 10, WHITE ); 
+    
+    //1.5 Khz
+    randomNumber = map( fht_log_out [7], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX,150 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 150 + offsetY, randomNumber, 10, WHITE ); 
+     
+    //2kHz
+    //randomNumber = map( fht_log_out [8], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX,170 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 170 + offsetY, randomNumber, 10, WHITE ); 
+  
+    //2.5 KHz
+    randomNumber = map( fht_log_out [9], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX,190 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 190 + offsetY, randomNumber, 10, WHITE );  
+    
+    //3Khz
+    randomNumber = map( fht_log_out [10], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX,210 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 210 + offsetY, randomNumber, 10, WHITE ); 
+   
+    //5KHz
+    randomNumber = map( fht_log_out [11], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX,230 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 230 + offsetY, randomNumber, 10 , WHITE );   
+    
+    //10Khz
+    //randomNumber = map( fht_log_out [12], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX,250 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 250 + offsetY, randomNumber, 10 , WHITE ); 
+  
+    //20Khz
+    randomNumber = map( fht_log_out [13], 0 , 256, 0 ,100); 
+    tft.fillRect(0 + offsetX,270 + offsetY, 200, 10, BLACK);
+    tft.fillRect(0 + offsetX, 270 + offsetY, randomNumber, 10 , WHITE ); 
+  */
+    MeasureFHT();
+  
+    for(int i = 2; i<=93; i++){
+      int separacion = 3;
+      tft.drawLine(0 + offsetX, 10+separacion*i + offsetY, 200 + offsetX , 10+separacion*i+offsetY, BLACK); //Se borra el anterior valor
+      randomNumber = fht_log_out[i]-30; //Filtro digital
+      if(randomNumber <= 0){randomNumber = 0;} 
+      tft.drawLine(0 + offsetX, 10+separacion*i + offsetY, randomNumber + offsetX , 10 + separacion*i + offsetY, WHITE);  //Se muestra el nuevo valor
+      }
+  
 /*
-    tft.setCursor(-20 + offsetX , 12 + offsetY );  // Situamos el cursor en la posicion del LCD deseada,
-                            // (X, Y) siendo X el ancho (240 px max.) e Y el alto (320 px max.) 
-
-      tft.setTextSize(1); // Definimos tamaño del texto. (Probado tamaños del 1 al 10)
-    
-    tft.setTextColor(WHITE); // Definimos el color del texto 
-    
-    tft.println("25"); // Escribimos nuestro texto en el LCD. Realizará un salto de linea 
-                          // automatico si el texto es mayor que el tamaño del LCD
-
-    
-    tft.setCursor(-20 + offsetX, 32 + offsetY);
-    tft.println("50");
-
-    tft.setCursor(-26 + offsetX, 52 + offsetY);
-    tft.println("100");
-
-    tft.setCursor(-26 + offsetX, 72 + offsetY);
-    tft.println("200");
-
-    tft.setCursor(-26 + offsetX, 91 + offsetY);
-    tft.println("500");
-    
-    tft.setCursor(-26 + offsetX, 111 + offsetY);
-    tft.println("800");
-    
-    tft.setCursor(-30 + offsetX, 132 + offsetY);
-    tft.println("1000");
-    
     tft.setCursor(-30 + offsetX, 152 + offsetY);
-    tft.println("1500");
+    tft.setTextSize(5); 
+    tft.setTextColor(WHITE); 
+    tft.fillRect(-30 + offsetX,152 + offsetY, 200, 50, BLACK);
+    tft.println(decibelios);
+  */   
+/*
+    int xpos = 0, ypos = 5, gap = 4, radius = 52;
+    // Draw a large meter
+    xpos = 320/2 - 160, ypos = 0, gap = 100, radius = 105;
+    ringMeter(decibelios,0,160, xpos,ypos,radius,"dB",RED2RED); // Draw analogue meter
+  */ 
+  /* 
+   for(int i = 157; i>=0; i--){
+   float alpha = float(i)/100; // Primer cuadrante
+   tft.fillTriangle(int(100*cos(alpha)+160),int(240-(100*sin(alpha)+120)),160,120,int(100*cos(alpha)+160),120,RED);
+   
+   //Cuarto cuadrante
+   tft.fillTriangle(int(100*cos(alpha)+160),int((100*sin(alpha)+120)),160,120,int(100*cos(alpha)+160),120,BLUE);
+   
+   float beta = 1.57+(1.57-alpha); //Segundo cuadrante
+   tft.fillTriangle(int(100*cos(beta)+160),int(240-(100*sin(beta)+120)),160,120,int(100*cos(beta)+160),120,YELLOW);
+   
+   //Tercer cuadrante
+   tft.fillTriangle(int(100*cos(beta)+160),int((100*sin(beta)+120)),160,120,int(100*cos(beta)+160),120,GREEN);
+   }
+   tft.fillCircle(160,120, 65, BLACK);
+   delay(10000);
+   delay(10000);
+   delay(10000);
+   */
+   
+    //show_Tachometer(1); 
+    // MODOS
+    // 1 -> Amplitud en %
+    // 2 -> RMS en %
+    // 3 -> dB
 
-    tft.setCursor(-30 + offsetX, 172 + offsetY);
-    tft.println("2000");
+    
+    
+} 
 
-    tft.setCursor(-30 + offsetX, 191 + offsetY);
-    tft.println("2500");
 
-    tft.setCursor(-30 + offsetX, 211 + offsetY);
-    tft.println("3000");
 
-    tft.setCursor(-30 + offsetX, 231 + offsetY);
-    tft.println("5000");
 
-    tft.setCursor(-35 + offsetX, 251 + offsetY);
-    tft.println("10000");
+float MeasureVolume(int mode)
+{
+  float soundVolAvg = 0, soundVolMax = 0, soundVolRMS = 0;
 
-    tft.setCursor(-35 + offsetX, 271 + offsetY);
-    tft.println("20000");
-*/
-////////////////////////////////
+  for (int i = 0; i < MicSamples; i++)
+  {
+    
+#ifdef ADCFlow
+    while (!(ADCSRA & /*0x10*/_BV(ADIF))); // wait for adc to be ready (ADIF)
+    sbi(ADCSRA, ADIF); // restart adc
+    byte m = ADCL; // fetch adc data
+    byte j = ADCH;
+    int k = ((int)j << 8) | m; // form into an int
 
+#endif
+    int amp = abs(k - AmpMax);
+    amp <<= VolumeGainFactorBits;
+    soundVolMax = max(soundVolMax, amp);
+    soundVolRMS += ((float)amp*amp);
+  }
+
+  soundVolRMS /= MicSamples;
+  float soundVolRMSflt = sqrt(soundVolRMS);
+
+
+  float dB = 20.0*log10(soundVolRMSflt/AmpMax);
+
+  // convert from 0 to 100
+  soundVolMax = 100 * soundVolMax / AmpMax; 
+  soundVolRMSflt = 100 * soundVolRMSflt / AmpMax;
+  soundVolRMS = 10 * soundVolRMSflt / 7; // RMS to estimate peak (RMS is 0.7 of the peak in sin)
+
+
+  if(mode == 1)
+     return soundVolMax;
+  if(mode == 2)
+    return soundVolRMS;
+  if(mode == 3)
+    return dB;
+  
+ return -1; 
+
+}
+
+
+void init_fast_ADC()
+{
+  
 #ifdef ADCFlow
   // set the adc to free running mode
   // register explanation: http://maxembedded.com/2011/06/the-adc-of-the-avr/
@@ -198,159 +319,154 @@ void setup() {
   cbi(ADCSRA, ADPS1);
   sbi(ADCSRA, ADPS0);
 #endif
-
-////////////////////////////////77
-
-
+    
 }
 
-void loop() {
-  tft.setRotation(0);
-/*
+void init_tachometer(double circleX, double circleY, double radio){
 
-    //25Hz
-    randomNumber =  random(0,100);
-    tft.fillRect(0 + offsetX, 10 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 10 + offsetY, randomNumber , 10, WHITE); // Dibujamos un cuadrado/rectangulo relleno de color 
-                                       //(Punto inicial X, Punto inicial Y, Longitud X,Longitud Y, Color)
-
-    //50Hz
-    randomNumber = random(0,100);
-    tft.fillRect(0  + offsetX, 30 + offsetY , 200, 10, BLACK);
-    tft.fillRect(0  + offsetX, 30 + offsetY , randomNumber, 10, WHITE ); 
-
-    //100Hz
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX, 50 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 50 + offsetY, randomNumber, 10, WHITE ); 
-    
-    
-    //200HZ
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX,70 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 70 + offsetY, randomNumber, 10, WHITE ); 
-    
-
-    //500hz
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX,90 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 90 + offsetY, randomNumber, 10, WHITE );   
-
-    //800Hz
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX,110 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 110 + offsetY, randomNumber, 10, WHITE ); 
-   
-
-    //1KHz
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX,130 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 130 + offsetY, randomNumber, 10, WHITE ); 
-    
-
-    //1.5 Khz
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX,150 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 150 + offsetY, randomNumber, 10, WHITE ); 
-     
-
-    //2kHz
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX,170 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 170 + offsetY, randomNumber, 10, WHITE ); 
+    double lados = 32;
+    double arista= (2*PI)/ lados;
+    int color;
   
+      tft.setRotation(1);
+   //Se crea una figura geometrica de 32 lados
+    
+    for(double i = 1; i<=lados; i++){
+      
+      if(i>=0 && i <= 6){color = BLUE;}
+      if(i>6 && i <= 20){color = ~0x4583;} //GREEN
+      if(i>20 && i<=28){color = BLACK;}
+      if(i>28 && i<=32){color = RED;}
+      tft.fillTriangle(circleX,240- circleY, int(radio*cos(arista*i)+circleX),int(240-(radio*sin(arista*i)+circleY)),int(radio*cos((arista*i)-0.2)+circleX),int(240-(radio*sin((arista*i)-0.2)+circleY)),color);  
+    }
+    
+    //Se dibujan las marcas de divison de segmentos
+    for(double i = 2; i <= lados; i+=2)
+    {
+     if(i<=20 || i >28)
+          { 
+            tft.drawLine(circleX,240- circleY,int(radio*cos(arista*i)+circleX),int(240-(radio*sin(arista*i)+circleY)), WHITE); 
+          }     
+     }
 
-    //2.5 KHz
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX,190 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 190 + offsetY, randomNumber, 10, WHITE );  
+    //Se borra el centro de la figura gemoetrica
+    tft.fillCircle(circleX,240-circleY,radio-20, BLACK);
+    
+    //Se alisa la figura geometrica
+    tft.drawCircle(circleX,240-circleY,radio,BLACK);
+    tft.drawCircle(circleX,240-circleY,radio+1,BLACK);
+    tft.drawCircle(circleX,240-circleY,radio+2,BLACK);
 
-    //3Khz
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX,210 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 210 + offsetY, randomNumber, 10, WHITE ); 
-   
-
-    //5KHz
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX,230 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 230 + offsetY, randomNumber, 10 , WHITE );   
-
-    //10Khz
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX,250 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 250 + offsetY, randomNumber, 10 , WHITE ); 
-  
-
-    //20Khz
-    randomNumber = random(0,100);
-    tft.fillRect(0 + offsetX,270 + offsetY, 200, 10, BLACK);
-    tft.fillRect(0 + offsetX, 270 + offsetY, randomNumber, 10 , WHITE ); 
-*/
-     //MeasureAnalog();
-     MeasureVolume();
-
-    tft.setCursor(-30 + offsetX, 152 + offsetY);
-    tft.setTextSize(5); 
-    tft.setTextColor(WHITE); 
-    tft.fillRect(-30 + offsetX,152 + offsetY, 200, 50, BLACK);
-    tft.println(decibelios);
-     
-/*
-    int xpos = 0, ypos = 5, gap = 4, radius = 52;
-    // Draw a large meter
-    xpos = 320/2 - 160, ypos = 0, gap = 100, radius = 105;
-    ringMeter(decibelios,0,160, xpos,ypos,radius,"dB",RED2RED); // Draw analogue meter
-  */  
-} 
-
-
-
-void MeasureAnalog()
-{  
-  long signalAvg = 0, signalMax = 0, signalMin = 1024, t0 = millis();
-  //cli();  // UDRE interrupt slows this way down on arduino1.0
-  for (int i = 0; i < MicSamples; i++)
-  { 
-
-#ifdef ADCFlow
-
-      while (!(ADCSRA & _BV(ADIF))); // wait for adc to be ready (ADIF)
-      sbi(ADCSRA, ADIF); // restart adc
-      byte m = ADCL; // fetch adc data
-      byte j = ADCH;
-      int k = ((int)j << 8) | m; // form into an int
-
-#endif  
-    signalMin = min(signalMin, k);
-    signalMax = max(signalMax, k);
-    signalAvg += k;
-
-
+    //Se añaden detalles
+    tft.drawCircle(circleX,240-circleY,radio+8,YELLOW);
   }
-  signalAvg /= MicSamples;
-  //sei();
 
+void init_spectrum(){
+   
+    tft.setRotation(0);
+    tft.setTextSize(1); // Definimos tamaño del texto. (Probado tamaños del 1 al 10) 
+    tft.setTextColor(WHITE); // Definimos el color del texto 
+    
+    tft.setCursor(-26 + offsetX , 12 + offsetY );  // Situamos el cursor en la posicion del LCD deseada,                      
+    tft.println("148");   
+    tft.setCursor(-26 + offsetX, 32 + offsetY);
+    tft.println("296");
+    tft.setCursor(-26 + offsetX, 52 + offsetY);
+    tft.println("445");
+    tft.setCursor(-26 + offsetX, 72 + offsetY);
+    tft.println("593");
+    tft.setCursor(-26 + offsetX, 91 + offsetY);
+    tft.println("742");
+    tft.setCursor(-26 + offsetX, 111 + offsetY);
+    tft.println("890");  
+    tft.setCursor(-30 + offsetX, 132 + offsetY);
+    tft.println("1039");   
+    tft.setCursor(-30 + offsetX, 152 + offsetY);
+    tft.println("1187");
+    tft.setCursor(-30 + offsetX, 172 + offsetY);
+    tft.println("1335");
+    tft.setCursor(-30 + offsetX, 191 + offsetY);
+    tft.println("1484");
+    tft.setCursor(-30 + offsetX, 211 + offsetY);
+    tft.println("1632");
+    tft.setCursor(-30 + offsetX, 231 + offsetY);
+    tft.println("1781");
+    tft.setCursor(-35 + offsetX, 251 + offsetY);
+    tft.println("1929");
+    tft.setCursor(-35 + offsetX, 271 + offsetY);
+    tft.println("2078");
+  
+  }
 
-  Serial.print("Time: " + String(millis() - t0));
-  Serial.print(" Min: " + String(signalMin));
-  Serial.print(" Max: " + String(signalMax));
-  Serial.print(" Avg: " + String(signalAvg));
-  Serial.print(" Span: " + String(signalMax - signalMin));
-  Serial.print(", " + String(signalMax - signalAvg));
-  Serial.print(", " + String(signalAvg - signalMin));
-  Serial.println("");
-
-}
-
-
-// calculate volume level of the signal and print to serial and LCD
-void MeasureVolume()
-{
-  long soundVolAvg = 0, soundVolMax = 0, soundVolRMS = 0, t0 = millis();
-  //cli();  // UDRE interrupt slows this way down on arduino1.0
-  for (int i = 0; i < MicSamples; i++)
+  void show_Tachometer(int mode)
   {
+ 
+    float medida = MeasureVolume(mode); // 1: Amplitud Max 2: RMS 3: Decibelios
+    static float ultima_medida = 0;
+
+    tft.setTextSize(2);
+    tft.setTextColor(WHITE);
+    tft.setCursor(circleX - 35 , 240 - circleY + 50);  
+    tft.fillRect(circleX - 35 , 240 - circleY + 50, 80, 35, BLACK);                      
+    tft.println(medida);
+  
+
+      tft.setTextSize(2); 
+      tft.setTextColor(WHITE);
+      tft.setCursor(circleX,circleY);
+     
+        switch(mode)
+        {          
+          case 1: tft.println("Amp %"); break;
+          case 2: tft.println("RMS %"); break;
+          case 3: tft.println("dB"); break;  
+          
+        }           
+
+    
+    //Tacometer
+    float MIN_t =  (((2*PI)/32)*20)*100; // Min
+    float MAX_t = -(((2*PI)/32)*4)*100; // Max
+    
+    medida = medida*100;
+        
+    if(mode == 3)
+    {
+      
+      //Signal in dB
+      float MIN_dB = -1300; //Modificar para calibrar el sonometro
+      float MAX_dB =  0;
+       
+      medida = map(int(medida), int(MIN_dB), int(MAX_dB), int (MIN_t), int(MAX_t));
+    }
+
+    if(mode == 2 || mode == 1)
+    {
+      float MIN_100 = 0*100; // Modificar para calibrar la amplitud maxima
+      float MAX_100 = 100*100; 
+
+      if(medida > 100*100){ medida = 100*100; }
+       
+      medida = map(int(medida), int(MIN_100), int(MAX_100), int(MIN_t), int (MAX_t));
+    }
+
+    medida = medida/100; // Se pasa a decimal el dato otra vez
+    tft.drawLine(circleX,240- circleY,int((radio-30)*cos(ultima_medida)+circleX),int(240-((radio-30)*sin(ultima_medida)+circleY)), BLACK); //Se borra el dato anterior 
+    ultima_medida = medida;
+    tft.drawLine(circleX,240- circleY,int((radio-30)*cos(medida)+circleX),int(240-((radio-30)*sin(medida)+circleY)), YELLOW); // Se muestra en nuevo dato
+    
+  }
+
+
+
+// calculate frequencies in the signal and print to serial
+void MeasureFHT()
+{
+  long t0 = micros();
+#ifdef ADCFlow
+  //cli();  // UDRE interrupt slows this way down on arduino1.0
+#endif
+  for (int i = 0; i < FHT_N; i++) { // save 256 samples
 #ifdef ADCFlow
     while (!(ADCSRA & /*0x10*/_BV(ADIF))); // wait for adc to be ready (ADIF)
     sbi(ADCSRA, ADIF); // restart adc
@@ -358,121 +474,34 @@ void MeasureVolume()
     byte j = ADCH;
     int k = ((int)j << 8) | m; // form into an int
 #else
-    //int k = analogRead(MicPin);
+    int k = analogRead(MicPin);
 #endif
-    int amp = abs(k - AmpMax);
-    amp <<= VolumeGainFactorBits;
-    soundVolMax = max(soundVolMax, amp);
-    soundVolAvg += amp;
-    soundVolRMS += ((long)amp*amp);
+    k -= 0x0200; // form into a signed int
+    k <<= 6; // form into a 16b signed int
+    k <<= FreqGainFactorBits;
+    fht_input[i] = k; // put real data into bins
   }
-  soundVolAvg /= MicSamples;
-  soundVolRMS /= MicSamples;
-  float soundVolRMSflt = sqrt(soundVolRMS);
+#ifdef ADCFlow
   //sei();
-
-  float dB = 20.0*log10(soundVolRMSflt/AmpMax);
-
-  // convert from 0 to 100
-  soundVolAvg = 100 * soundVolAvg / AmpMax; 
-  soundVolMax = 100 * soundVolMax / AmpMax; 
-  soundVolRMSflt = 100 * soundVolRMSflt / AmpMax;
-  soundVolRMS = 10 * soundVolRMSflt / 7; // RMS to estimate peak (RMS is 0.7 of the peak in sin)
-
-  // print
-  //Serial.print("Time: " + String(millis() - t0));
-  //Serial.print(" Amp: Max: " + String(soundVolMax));
-  //Serial.print("% Avg: " + String(soundVolAvg));
-  //Serial.print("% RMS: " + String(soundVolRMS));
-  dB = 200 - abs(dB*10);
-  Serial.println("% dB: " + String(dB,3));
-
-  decibelios = int(dB);
-
-}
-
-// #########################################################################
-//  Draw the meter on the screen, returns x coord of righthand side
-// #########################################################################
-int ringMeter(int value, int vmin, int vmax, int x, int y, int r, char *units, byte scheme)
-{
-  // Minimum value of r is about 52 before value text intrudes on ring
-  // drawing the text first is an option
-  /*
-  x += r; y += r;   // Calculate coords of centre of ring
-  int w = r / 3;    // Width of outer ring is 1/4 of radius 
-  int angle = 150;  // Half the sweep angle of meter (300 degrees)
-  int v = map(value, vmin, vmax, -angle, angle); // Map the value to an angle v
-  byte seg = 3; // Segments are 3 degrees wide = 100 segments for 300 degrees
-  byte inc = 6; // Draw segments every 3 degrees, increase to 6 for segmented ring
-  // Variable to save "value" text colour from scheme and set default
-  int colour = BLUE;
- 
-  // Draw colour blocks every inc degrees
-  for (int i = -angle+inc/2; i < angle-inc/2; i += inc) {
-    // Calculate pair of coordinates for segment start
-    float sx = cos((i - 90) * 0.0174532925);
-    float sy = sin((i - 90) * 0.0174532925);
-    uint16_t x0 = sx * (r - w) + x;
-    uint16_t y0 = sy * (r - w) + y;
-    uint16_t x1 = sx * r + x;
-    uint16_t y1 = sy * r + y;
-
-    // Calculate pair of coordinates for segment end
-    float sx2 = cos((i + seg - 90) * 0.0174532925);
-    float sy2 = sin((i + seg - 90) * 0.0174532925);
-    int x2 = sx2 * (r - w) + x;
-    int y2 = sy2 * (r - w) + y;
-    int x3 = sx2 * r + x;
-    int y3 = sy2 * r + y;
-
-    if (i < v) { // Fill in coloured segments with 2 triangles
-      switch (scheme) {
-        case 0: colour = RED; break; // Fixed colour
-        case 1: colour = GREEN; break; // Fixed colour
-        case 2: colour = BLUE; break; // Fixed colour
-        //case 3: colour = rainbow(map(i, -angle, angle, 0, 127));  break; // Full spectrum blue to red
-        //case 4: colour = rainbow(map(i, -angle, angle, 70, 127)); break; // Green to red (high temperature etc)
-        //case 5: colour = rainbow(map(i, -angle, angle, 127, 63));  break; // Red to green (low battery etc)
-        default: colour = BLUE; break; // Fixed colour
-      }
-      tft.fillTriangle(x0, y0, x1, y1, x2, y2, colour);
-     // tft.fillTriangle(x1, y1, x2, y2, x3, y3, colour);
-//      text_colour = colour; // Save the last colour drawn
-    }
-    else // Fill in blank segments
-    {
-      tft.fillTriangle(x0, y0, x1, y1, x2, y2, GREY);
-      //tft.fillTriangle(x1, y1, x2, y2, x3, y3, GREY);
-    }
+#endif
+  long dt = micros() - t0;
+  fht_window(); // window the data for better frequency response
+  fht_reorder(); // reorder the data before doing the fht
+  fht_run(); // process the data in the fht
+  fht_mag_log();  //process amplitude fht in dB
+/*
+  // print as text
+  for (int i = 0; i < FHT_N / 2; i++)
+  {
+    Serial.print( fht_log_out [i]);
+    Serial.print(',');
   }
   
-  // Convert value to a string
-  char buf[10];
-  byte len = 2; if (value > 999) len = 4;
-  dtostrf(value, len, 0, buf);
-  buf[len] = ' '; buf[len] = 0; // Add blanking space and terminator, helps to centre text too!
-  // Set the text colour to default
-  tft.setTextSize(1);
-
-  if(value>9){
-  tft.setTextColor(colour,BLACK);
-  tft.setCursor(x-25,y-10);tft.setTextSize(5);
-  tft.print(buf);}
-  if(value<10){
-  tft.setTextColor(colour,BLACK);
-  tft.setCursor(x-25,y-10);tft.setTextSize(5);
-  tft.print(buf);
-  }
-
-  tft.setTextColor(WHITE,BLACK);
-  
-  tft.setCursor(x-39,y+75);tft.setTextSize(2);
-  tft.print(units); // Units display
-  */
-  // Calculate and return right hand side x coordinate
-  return x + r;
+  long sample_rate = FHT_N * 1000000l / dt;
+  Serial.print(dt);
+  Serial.print(',');
+  Serial.println(sample_rate);
+*/
 }
-
-
+  
 
