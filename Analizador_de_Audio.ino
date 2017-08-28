@@ -21,6 +21,9 @@ short TS_MAXY = 891;
 #define MAXPRESSURE 1000
 
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 364); 
+
+
+
 //Es RGB 565: http://www.barth-dev.de/online/rgb565-color-picker/
 #define BLACK   ~0x0000 //Define colors
 #define WHITE   ~0xFFFF
@@ -40,6 +43,9 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 364);
 
 Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET); // Instancia LCD 
 
+int button_A = 12;
+int button_B = 11;
+
 /******************* CONFIGURACIÓN DEL ADC POR REGISTROS *******************/
 
 // FHT, http://wiki.openmusiclabs.com/wiki/ArduinoFHT
@@ -51,22 +57,8 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET); // Instancia LCD
 #define AmpMax (1024 / 2)
 #define MicSamples (1024*2) // Three of these time-weightings have been internationally standardised, 'S' (1 s) originally called Slow, 'F' (125 ms) originally called Fast and 'I' (35 ms) originally called Impulse.
 
-// modes
-#define Use3.3 // use 3.3 voltage. the 5v voltage from usb is not regulated. this is much more stable.
-#define ADCReClock // switch to higher clock, not needed if we are ok with freq between 0 and 4Khz.
-#define ADCFlow // read data from adc with free-run (not interupt). much better data, dc low. hardcoded for A0.
 
-#define FreqLog // use log scale for FHT frequencies
-#ifdef FreqLog
-#define FreqOutData fht_log_out
-#define FreqGainFactorBits 0
-#else
-#define FreqOutData fht_lin_out8
-#define FreqGainFactorBits 3
-#endif
-#define FreqSerialBinary
 
-#define VolumeGainFactorBits 0
 
 // macros
 // http://yaab-arduino.blogspot.co.il/2015/02/fast-sampling-from-analog-input.html
@@ -77,31 +69,32 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET); // Instancia LCD
 
 /********************** VARIABLES DEL CÓDIGO ******************/
 
-    int randomNumber25  = 0;
     int randomNumber = 0;
     int last_randomNumber = 0;
     int offsetX = 50;
     int offsetY = 10;
-
-    int decibelios = 0;
-    double medida = 0;
-    
+  
     //Para la aguja del tacómetro
     double circleX = 160;
     double circleY = 100;
     double radio = 120;
 
+    int modos = 0;
+    int last_modos = 3;
+    bool key_1 = 0;
+    bool key_2 = 0;
+
 void setup() {
   
   tft.begin(0x9341); // Iniciamos el LCD especificando el controlador ILI9341. 
   tft.fillScreen(BLACK); // Pintamos el fondo de negro
+
+  pinMode(button_A, INPUT_PULLUP);
+  pinMode(button_B, INPUT_PULLUP);
    
   Serial.begin(9600);
 
   init_fast_ADC();
-   
-  //init_tachometer(160,100,120); // Posicion X, Posicion Y, Radio /// Probado con R:100  X: 160 Y: 120
-  init_spectrum();
 
 
 }
@@ -182,16 +175,8 @@ void loop() {
     tft.fillRect(0 + offsetX,270 + offsetY, 200, 10, BLACK);
     tft.fillRect(0 + offsetX, 270 + offsetY, randomNumber, 10 , WHITE ); 
   */
-    MeasureFHT();
-  
-    for(int i = 2; i<=93; i++){
-      int separacion = 3;
-      tft.drawLine(0 + offsetX, 10+separacion*i + offsetY, 200 + offsetX , 10+separacion*i+offsetY, BLACK); //Se borra el anterior valor
-      randomNumber = fht_log_out[i]-30; //Filtro digital
-      if(randomNumber <= 0){randomNumber = 0;} 
-      tft.drawLine(0 + offsetX, 10+separacion*i + offsetY, randomNumber + offsetX , 10 + separacion*i + offsetY, WHITE);  //Se muestra el nuevo valor
-      }
-  
+
+
 /*
     tft.setCursor(-30 + offsetX, 152 + offsetY);
     tft.setTextSize(5); 
@@ -199,12 +184,8 @@ void loop() {
     tft.fillRect(-30 + offsetX,152 + offsetY, 200, 50, BLACK);
     tft.println(decibelios);
   */   
-/*
-    int xpos = 0, ypos = 5, gap = 4, radius = 52;
-    // Draw a large meter
-    xpos = 320/2 - 160, ypos = 0, gap = 100, radius = 105;
-    ringMeter(decibelios,0,160, xpos,ypos,radius,"dB",RED2RED); // Draw analogue meter
-  */ 
+
+
   /* 
    for(int i = 157; i>=0; i--){
    float alpha = float(i)/100; // Primer cuadrante
@@ -225,13 +206,80 @@ void loop() {
    delay(10000);
    */
    
-    //show_Tachometer(1); 
+    //show_SoundMeter(3); 
     // MODOS
     // 1 -> Amplitud en %
     // 2 -> RMS en %
     // 3 -> dB
 
+    //show_SpectrumFFT(1);
+    //MODOS
+    // 1 -> Modo ancho de banda
+    // 2 -> Modo música
+
+   
+    bool next = 1 - digitalRead(button_A); //Como la entrada es PULL UP se invierte la lectura
+    bool prev = 1 - digitalRead(button_B);
     
+
+    if(next == 1 && key_1 == 0)
+    {
+      if(modos < 4)
+      {
+        modos++;       
+      }
+      key_1 = 1;
+    }
+    if(next == 0)
+    {
+      key_1 = 0;
+    }
+
+
+    if(prev == 1 && key_2 == 0)
+    {
+      if(modos > 0)
+      {
+        modos--;
+      }
+      key_2 = 1;
+    }
+    if(prev == 0)
+    {
+      key_2 = 0;
+    }
+
+
+    //Inicio
+    if(modos != last_modos)
+    {
+      switch(modos)
+      {
+      case 0: tft.fillScreen(BLACK); init_SoundMeter(160,100,120);  break;
+      case 1: tft.fillScreen(BLACK); init_SoundMeter(160,100,120);  break;
+      case 2: tft.fillScreen(BLACK); init_SoundMeter(160,100,120);  break;
+      case 3: tft.fillScreen(BLACK); init_SpectrumFFT(1); break;
+      case 4: tft.fillScreen(BLACK); init_SpectrumFFT(2); break;         
+      }  
+    }
+    last_modos = modos;
+
+    
+    //Ejecucion
+    switch(modos)
+    {
+      case 0: show_SoundMeter(1);  break;
+      case 1: show_SoundMeter(2);  break;
+      case 2: show_SoundMeter(3);  break;
+      case 3: show_SpectrumFFT(1); break;
+      case 4: show_SpectrumFFT(2); break;
+    }
+
+    Serial.println(modos);
+
+    
+  
+
     
 } 
 
@@ -245,16 +293,16 @@ float MeasureVolume(int mode)
   for (int i = 0; i < MicSamples; i++)
   {
     
-#ifdef ADCFlow
-    while (!(ADCSRA & /*0x10*/_BV(ADIF))); // wait for adc to be ready (ADIF)
+
+    while (!(ADCSRA & _BV(ADIF))); // wait for adc to be ready (ADIF)
     sbi(ADCSRA, ADIF); // restart adc
     byte m = ADCL; // fetch adc data
     byte j = ADCH;
     int k = ((int)j << 8) | m; // form into an int
 
-#endif
+
     int amp = abs(k - AmpMax);
-    amp <<= VolumeGainFactorBits;
+    //amp <<= VolumeGainFactorBits;
     soundVolMax = max(soundVolMax, amp);
     soundVolRMS += ((float)amp*amp);
   }
@@ -282,47 +330,23 @@ float MeasureVolume(int mode)
 
 }
 
-
 void init_fast_ADC()
 {
   
-#ifdef ADCFlow
-  // set the adc to free running mode
-  // register explanation: http://maxembedded.com/2011/06/the-adc-of-the-avr/
-  // 5 => div 32. sample rate 38.4
-  // 7 => switch to divider=128, default 9.6khz sampling
-
-  //ADCSRA = 0xe0+7; // "ADC Enable", "ADC Start Conversion", "ADC Auto Trigger Enable" and divider.
   ADCSRA = 0xE5;
-  //ADMUX = 0x0; // use adc0 (hardcoded, doesn't use MicPin). Use ARef pin for analog reference (same as analogReference(EXTERNAL)).
   ADMUX = 0x5; // ADC 5 sin configurar Vref
-  
-#ifndef Use3.3
-  ADMUX |= 0x40; // Use Vcc for analog reference.
-#endif
-  //DIDR0 = 0x01; // turn off the digital input for adc0
-    DIDR0 = 0x20;
-#else
-#ifdef Use3.3
+  DIDR0 = 0x20;
   analogReference(EXTERNAL); // 3.3V to AREF
-#endif
-#endif
-
-#ifdef ADCReClock // change ADC freq divider. default is div 128 9.6khz (bits 111)
   // http://yaab-arduino.blogspot.co.il/2015/02/fast-sampling-from-analog-input.html
-  // 1 0 0 = mode 4 = divider 16 = 76.8khz
-  //sbi(ADCSRA, ADPS2);
-  //cbi(ADCSRA, ADPS1);
-  //cbi(ADCSRA, ADPS0);
-  // 1 0 1 = mode 5 = divider 32 = 38.4Khz
+  // http://maxembedded.com/2011/06/the-adc-of-the-avr/
+  //https://sites.google.com/site/qeewiki/books/avr-guide/analog-input
   sbi(ADCSRA, ADPS2);
   cbi(ADCSRA, ADPS1);
   sbi(ADCSRA, ADPS0);
-#endif
-    
+
 }
 
-void init_tachometer(double circleX, double circleY, double radio){
+void init_SoundMeter(double circleX, double circleY, double radio){
 
     double lados = 32;
     double arista= (2*PI)/ lados;
@@ -361,48 +385,92 @@ void init_tachometer(double circleX, double circleY, double radio){
     tft.drawCircle(circleX,240-circleY,radio+8,YELLOW);
   }
 
-void init_spectrum(){
+void init_SpectrumFFT(int mode){
    
     tft.setRotation(0);
     tft.setTextSize(1); // Definimos tamaño del texto. (Probado tamaños del 1 al 10) 
-    tft.setTextColor(WHITE); // Definimos el color del texto 
+    tft.setTextColor(WHITE); // Definimos el color del texto
     
-    tft.setCursor(-26 + offsetX , 12 + offsetY );  // Situamos el cursor en la posicion del LCD deseada,                      
-    tft.println("148");   
+    float sample = 38000.00/256.00;
+
+    if(mode == 2){
+
+    tft.setCursor(-26 + offsetX , 12 + offsetY );                       
+    tft.println(int(sample*2));   
     tft.setCursor(-26 + offsetX, 32 + offsetY);
-    tft.println("296");
+    tft.println(int(sample*4));
     tft.setCursor(-26 + offsetX, 52 + offsetY);
-    tft.println("445");
-    tft.setCursor(-26 + offsetX, 72 + offsetY);
-    tft.println("593");
-    tft.setCursor(-26 + offsetX, 91 + offsetY);
-    tft.println("742");
-    tft.setCursor(-26 + offsetX, 111 + offsetY);
-    tft.println("890");  
+    tft.println(int(sample*6));
+    tft.setCursor(-30 + offsetX, 72 + offsetY);
+    tft.println(int(sample*8));
+    tft.setCursor(-30 + offsetX, 92 + offsetY);
+    tft.println(int(sample*10));
+    tft.setCursor(-30 + offsetX, 112 + offsetY);
+    tft.println(int(sample*12));  
     tft.setCursor(-30 + offsetX, 132 + offsetY);
-    tft.println("1039");   
+    tft.println(int(sample*14));   
     tft.setCursor(-30 + offsetX, 152 + offsetY);
-    tft.println("1187");
+    tft.println(int(sample*16));
     tft.setCursor(-30 + offsetX, 172 + offsetY);
-    tft.println("1335");
-    tft.setCursor(-30 + offsetX, 191 + offsetY);
-    tft.println("1484");
-    tft.setCursor(-30 + offsetX, 211 + offsetY);
-    tft.println("1632");
-    tft.setCursor(-30 + offsetX, 231 + offsetY);
-    tft.println("1781");
-    tft.setCursor(-35 + offsetX, 251 + offsetY);
-    tft.println("1929");
-    tft.setCursor(-35 + offsetX, 271 + offsetY);
-    tft.println("2078");
-  
+    tft.println(int(sample*18));
+    tft.setCursor(-30 + offsetX, 192 + offsetY);
+    tft.println(int(sample*20));
+    tft.setCursor(-30 + offsetX, 212 + offsetY);
+    tft.println(int(sample*22));
+    tft.setCursor(-30 + offsetX, 232 + offsetY);
+    tft.println(int(sample*24));
+    tft.setCursor(-35 + offsetX, 252 + offsetY);
+    tft.println(int(sample*26));
+    tft.setCursor(-35 + offsetX, 272 + offsetY);
+    tft.println(int(sample*28));
+    }
+
+    if(mode == 1){
+         
+    
+    tft.setCursor(-30 + offsetX , 12 + offsetY );                       
+    tft.println(int(sample*9*1));   
+    tft.setCursor(-30 + offsetX, 32 + offsetY);
+    tft.println(int(sample*9*2));
+    tft.setCursor(-30 + offsetX, 52 + offsetY);
+    tft.println(int(sample*9*3));
+    tft.setCursor(-30 + offsetX, 72 + offsetY);
+    tft.println(int(sample*9*4));
+    tft.setCursor(-30 + offsetX, 92 + offsetY);
+    tft.println(int(sample*9*5));
+    tft.setCursor(-30 + offsetX, 112 + offsetY);
+    tft.println(int(sample*9*6));  
+    tft.setCursor(-30 + offsetX, 132 + offsetY);
+    tft.println(int(sample*9*7));   
+    tft.setCursor(-35 + offsetX, 152 + offsetY);
+    tft.println(int(sample*9*8));
+    tft.setCursor(-35 + offsetX, 172 + offsetY);
+    tft.println(int(sample*9*9));
+    tft.setCursor(-35 + offsetX, 192 + offsetY);
+    tft.println(int(sample*9*10));
+    tft.setCursor(-35 + offsetX, 212 + offsetY);
+    tft.println(int(sample*9*11));
+    tft.setCursor(-35 + offsetX, 232 + offsetY);
+    tft.println(int(sample*9*12));
+    tft.setCursor(-35 + offsetX, 252 + offsetY);
+    tft.println(int(sample*9*13));
+    tft.setCursor(-35 + offsetX, 272 + offsetY);
+    tft.println(int(sample*9*14));
+    }
+     
   }
 
-  void show_Tachometer(int mode)
-  {
- 
+void show_SoundMeter(int mode){
+  /*
+     static bool key_sound = 1; //Se inicia una vez
+     if(key_sound == 1){
+      key_sound = 0; 
+      init_SoundMeter(160,100,120); // Posicion X, Posicion Y, Radio /// Probado con R:100  X: 160 Y: 120
+     }
+ */
     float medida = MeasureVolume(mode); // 1: Amplitud Max 2: RMS 3: Decibelios
     static float ultima_medida = 0;
+    static int last_mode = 0;
 
     tft.setTextSize(2);
     tft.setTextColor(WHITE);
@@ -410,7 +478,9 @@ void init_spectrum(){
     tft.fillRect(circleX - 35 , 240 - circleY + 50, 80, 35, BLACK);                      
     tft.println(medida);
   
-
+    if(last_mode != mode)
+    {
+      tft.fillRect(circleX, circleY, 50,25, BLACK); //Borra el texto
       tft.setTextSize(2); 
       tft.setTextColor(WHITE);
       tft.setCursor(circleX,circleY);
@@ -420,10 +490,14 @@ void init_spectrum(){
           case 1: tft.println("Amp %"); break;
           case 2: tft.println("RMS %"); break;
           case 3: tft.println("dB"); break;  
-          
         }           
-
-    
+        
+    }
+    if(mode != 3)
+      last_mode = mode;
+    else
+      last_mode = 12; //Se le da un numero diferente de 1,2 y 3 
+      
     //Tacometer
     float MIN_t =  (((2*PI)/32)*20)*100; // Min
     float MAX_t = -(((2*PI)/32)*4)*100; // Max
@@ -434,7 +508,7 @@ void init_spectrum(){
     {
       
       //Signal in dB
-      float MIN_dB = -1300; //Modificar para calibrar el sonometro
+      float MIN_dB = -4000; //Modificar para calibrar el sonometro
       float MAX_dB =  0;
        
       medida = map(int(medida), int(MIN_dB), int(MAX_dB), int (MIN_t), int(MAX_t));
@@ -457,51 +531,65 @@ void init_spectrum(){
     
   }
 
-
-
-// calculate frequencies in the signal and print to serial
-void MeasureFHT()
-{
-  long t0 = micros();
-#ifdef ADCFlow
-  //cli();  // UDRE interrupt slows this way down on arduino1.0
-#endif
+void MeasureFHT(){
+  
   for (int i = 0; i < FHT_N; i++) { // save 256 samples
-#ifdef ADCFlow
+
     while (!(ADCSRA & /*0x10*/_BV(ADIF))); // wait for adc to be ready (ADIF)
     sbi(ADCSRA, ADIF); // restart adc
     byte m = ADCL; // fetch adc data
     byte j = ADCH;
     int k = ((int)j << 8) | m; // form into an int
-#else
-    int k = analogRead(MicPin);
-#endif
+
     k -= 0x0200; // form into a signed int
     k <<= 6; // form into a 16b signed int
-    k <<= FreqGainFactorBits;
+    //k <<= FreqGainFactorBits;
+    
     fht_input[i] = k; // put real data into bins
+    
   }
-#ifdef ADCFlow
-  //sei();
-#endif
-  long dt = micros() - t0;
   fht_window(); // window the data for better frequency response
   fht_reorder(); // reorder the data before doing the fht
   fht_run(); // process the data in the fht
   fht_mag_log();  //process amplitude fht in dB
-/*
-  // print as text
-  for (int i = 0; i < FHT_N / 2; i++)
+}
+
+void show_SpectrumFFT(int mode){
+  /*
+  static bool key_fft = 1; //Se inicializa una unica vez
+  if(key_fft == 1){
+    init_SpectrumFFT(mode);
+    key_fft = 0;
+  }
+  */
+  MeasureFHT();
+
+ 
+  if(mode == 1)
+  { 
+    //De 0 a 1900 Hz
+    for(int i = 2; i<=127; i++){ //126 bins
+      int separacion = 2;
+      tft.drawLine(0 + offsetX, 10+separacion*i + offsetY, 200 + offsetX , 10+separacion*i+offsetY, BLACK); //Se borra el anterior valor
+      randomNumber = fht_log_out[i]-90; //Filtro digital
+      if(randomNumber <= 0){randomNumber = 0;} 
+      tft.drawLine(0 + offsetX, 10+separacion*i + offsetY, randomNumber + offsetX , 10 + separacion*i + offsetY, WHITE);  //Se muestra el nuevo valor
+      }
+  }
+
+  if(mode == 2)
   {
-    Serial.print( fht_log_out [i]);
-    Serial.print(',');
+     //De 0 a 4453 Hz //Musica
+    for(int i = 2; i<=29; i++){ //28 bins
+      int separacion = 9;
+      tft.drawLine(0 + offsetX, 10+separacion*i + offsetY, 200 + offsetX , 10+separacion*i+offsetY, BLACK); //Se borra el anterior valor
+      randomNumber = fht_log_out[i]-90; //Filtro digital
+      if(randomNumber <= 0){randomNumber = 0;} 
+      tft.drawLine(0 + offsetX, 10+separacion*i + offsetY, randomNumber + offsetX , 10 + separacion*i + offsetY, WHITE);  //Se muestra el nuevo valor
+      }
   }
   
-  long sample_rate = FHT_N * 1000000l / dt;
-  Serial.print(dt);
-  Serial.print(',');
-  Serial.println(sample_rate);
-*/
+  
 }
   
 
