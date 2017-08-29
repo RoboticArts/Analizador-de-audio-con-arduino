@@ -3,6 +3,7 @@ Sonómetro de decibelios y analizador de espectro FFT con pantalla  TFT y preamp
 
 
 Librerías necesarias para compilar el programa
+
 Librería TFT: https://github.com/adafruit/TFTLCD-Library
 
 Librería de gráficos: https://github.com/adafruit/Adafruit-GFX-Library
