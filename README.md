@@ -1,8 +1,10 @@
 # Analizador-de-audio-con-arduino
-Sonómetro de decibelios y anallizador de espectro FFT con pantalla  TFT y preamplificador de microfono para arduiono UNO en formato shield.
+Sonómetro de decibelios y analizador de espectro FFT con pantalla  TFT y preamplificador de micrófono para Arduino UNO en formato shield.
 
 
 Librerías necesarias para compilar el programa
-https://github.com/adafruit/TFTLCD-Library
-https://github.com/adafruit/Touch-Screen-Library
-https://github.com/adafruit/Adafruit-GFX-Library
+Librería TFT: https://github.com/adafruit/TFTLCD-Library
+
+Librería de gráficos: https://github.com/adafruit/Adafruit-GFX-Library
+
+Librería FHT: http://wiki.openmusiclabs.com/wiki/ArduinoFHT?action=AttachFile&do=view&target=ArduinoFHT4.zip
