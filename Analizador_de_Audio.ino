@@ -11,7 +11,7 @@
 
 
 //Es RGB 565: http://www.barth-dev.de/online/rgb565-color-picker/
-#define BLACK   ~0x0000 //Define colors
+#define BLACK   ~0x0000 
 #define WHITE   ~0xFFFF
 #define RED     ~0xF800
 #define GREEN   ~0x07E0
@@ -33,17 +33,17 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET); // Instancia LCD
 /******************* CONFIGURACIÓN DEL ADC POR REGISTROS *******************/
 
 // FHT, http://wiki.openmusiclabs.com/wiki/ArduinoFHT
-#define LOG_OUT 1 // use the log output function
-#define FHT_N 256 // set to 256 point fht
-#include <FHT.h> // include the library
+#define LOG_OUT 1 // Se usa la amplitud en dB
+#define FHT_N 256 // Configura la FHT en 256 bins
+#include <FHT.h> // Se incluye la librera (debe estar definda después de LOG_OUT y FHT_N
 
-// consts
+// Consante
 #define AmpMax (1024 / 2)
-#define MicSamples (1024*2) // Three of these time-weightings have been internationally standardised, 'S' (1 s) originally called Slow, 'F' (125 ms) originally called Fast and 'I' (35 ms) originally called Impulse.
+#define MicSamples (1024*2) 
 
 
 
-// macros
+// Se limpian los registros del ADC
 // http://yaab-arduino.blogspot.co.il/2015/02/fast-sampling-from-analog-input.html
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
