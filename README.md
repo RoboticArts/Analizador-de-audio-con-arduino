@@ -1,6 +1,8 @@
 # Analizador-de-audio-con-arduino
 Sonómetro de decibelios y analizador de espectro FFT con pantalla  TFT y preamplificador de micrófono para Arduino UNO en formato shield.
 
+En el pdf Anlizador de Audio Documentación encontrarás información adicional al vídeo: https://youtu.be/dKPURQHRQ4k
+
 
 Librerías necesarias para compilar el programa
 
