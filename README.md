@@ -10,5 +10,8 @@ Librería de gráficos: https://github.com/adafruit/Adafruit-GFX-Library
 
 Librería FHT: http://wiki.openmusiclabs.com/wiki/ArduinoFHT?action=AttachFile&do=view&target=ArduinoFHT4.zip
 
-Y si quieres puedes bajarte desde aquí las tres a la vez. Descomprime el archivo y mueve las librerías en Documetos - Arduno - Librerias:
+También puedes bajarte desde las tres a la vez. Descomprime el archivo y mueve las librerías en Documetos - Arduino - Librerias:
 http://www.mediafire.com/file/38qfa94b6bpywek/Librerias_Pack.rar
+
+
+Circuito easyEDA modificable: https://easyeda.com/roboticarts1/Proyectos-d16de7d5fcc04d69acaac639ba3e3e64
